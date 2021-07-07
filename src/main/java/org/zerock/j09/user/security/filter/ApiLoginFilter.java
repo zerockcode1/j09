@@ -1,70 +1,96 @@
 package org.zerock.j09.user.security.filter;
 
+import com.google.gson.Gson;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
 import org.zerock.j09.user.dto.MemberDTO;
-import org.zerock.j09.user.security.JWTUtil;
+import org.zerock.j09.user.security.util.JWTUtil;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.security.Principal;
+import java.util.HashMap;
+import java.util.Map;
 
 @Log4j2
 public class ApiLoginFilter extends AbstractAuthenticationProcessingFilter {
 
-    private JWTUtil jwtUtil;
-
     public ApiLoginFilter(String defaultFilterProcessesUrl, AuthenticationManager authenticationManager) {
         super(defaultFilterProcessesUrl, authenticationManager);
-        this.jwtUtil = new JWTUtil();
     }
 
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException, IOException, ServletException {
 
-        log.info("-------------------------------------");
+        log.info("=================================");
+        log.info("===============attempt login==================");
+        log.info("=================================");
 
         String email = request.getParameter("email");
         String pw = request.getParameter("pw");
 
-        UsernamePasswordAuthenticationToken authenticationToken
-                 = new UsernamePasswordAuthenticationToken(email,pw);
+        log.info("email: " + email +" pw: " + pw);
+
+        UsernamePasswordAuthenticationToken authenticationToken =
+                new UsernamePasswordAuthenticationToken(email,pw);
 
         Authentication authResult =  this.getAuthenticationManager().authenticate(authenticationToken);
 
+        log.info(this.getAuthenticationManager().getClass().getName());
+
         log.info(authResult);
+
 
         return authResult;
     }
 
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException {
-        log.info("-----------------ApiLoginFilter---------------------");
-        log.info("successfulAuthentication: " + authResult);
+        log.info("success login after.................");
 
-        log.info(authResult.getPrincipal());
+        Object principal = authResult.getPrincipal();
 
-        //email address
-        String email = ((MemberDTO)authResult.getPrincipal()).getUsername();
+        log.info(principal);
 
-        String token = null;
+        response.setStatus(HttpServletResponse.SC_OK);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+        Map<String, Object> map = new HashMap<>();
+
+        String email = ((MemberDTO)principal).getUsername();
+
         try {
-            token = jwtUtil.generateToken(email);
+            String jwt = new JWTUtil().generateToken(email);
 
-            response.setContentType("text/plain");
-            response.getOutputStream().write(token.getBytes());
+            map.put("TOKEN",jwt);
 
-            log.info(token);
+            Gson gson = new Gson();
+            String str = gson.toJson(map);
 
+            response.getWriter().println(str);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+
+
+
     }
 }
+
+
+
+
+
+
+
+
