@@ -2,13 +2,18 @@ package org.zerock.j09.user.security.filter;
 
 import com.google.gson.Gson;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
+import org.zerock.j09.user.dto.LoginDTO;
 import org.zerock.j09.user.dto.MemberDTO;
+import org.zerock.j09.user.entity.MemberRefreshToken;
+import org.zerock.j09.user.repository.MemberRefreshTokenRepository;
 import org.zerock.j09.user.security.util.JWTUtil;
 
 import javax.servlet.FilterChain;
@@ -19,9 +24,15 @@ import java.io.IOException;
 import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Log4j2
 public class ApiLoginFilter extends AbstractAuthenticationProcessingFilter {
+
+
+
+    @Autowired
+    private MemberRefreshTokenRepository memberRefreshTokenRepository;
 
     public ApiLoginFilter(String defaultFilterProcessesUrl, AuthenticationManager authenticationManager) {
         super(defaultFilterProcessesUrl, authenticationManager);
@@ -34,13 +45,15 @@ public class ApiLoginFilter extends AbstractAuthenticationProcessingFilter {
         log.info("===============attempt login==================");
         log.info("=================================");
 
-        String email = request.getParameter("email");
-        String pw = request.getParameter("pw");
+        String jsonStr = request.getReader().readLine();
 
-        log.info("email: " + email +" pw: " + pw);
+        Gson gson = new Gson();
+
+        LoginDTO dto = gson.fromJson(jsonStr, LoginDTO.class);
+
 
         UsernamePasswordAuthenticationToken authenticationToken =
-                new UsernamePasswordAuthenticationToken(email,pw);
+                new UsernamePasswordAuthenticationToken(dto.getEmail(),dto.getPw());
 
         Authentication authResult =  this.getAuthenticationManager().authenticate(authenticationToken);
 
@@ -70,7 +83,16 @@ public class ApiLoginFilter extends AbstractAuthenticationProcessingFilter {
         try {
             String jwt = new JWTUtil().generateToken(email);
 
+            String refreshStr = "" + System.currentTimeMillis();
+
             map.put("TOKEN",jwt);
+            map.put("REFRESH", refreshStr);
+
+            long expireDate = System.currentTimeMillis() + (1000*60*60*30);
+
+            MemberRefreshToken refreshToken = MemberRefreshToken.builder().email(email).refreshStr(refreshStr).expireDate(expireDate).build();
+
+            memberRefreshTokenRepository.save(refreshToken);
 
             Gson gson = new Gson();
             String str = gson.toJson(map);
@@ -80,9 +102,6 @@ public class ApiLoginFilter extends AbstractAuthenticationProcessingFilter {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-
-
 
     }
 }

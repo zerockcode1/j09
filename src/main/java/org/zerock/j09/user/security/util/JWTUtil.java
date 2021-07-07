@@ -1,14 +1,13 @@
 package org.zerock.j09.user.security.util;
 
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.impl.DefaultClaims;
 import io.jsonwebtoken.impl.DefaultJws;
 import lombok.extern.log4j.Log4j2;
 
 
+import java.io.UnsupportedEncodingException;
 import java.time.ZonedDateTime;
 import java.util.Date;
 
@@ -19,7 +18,7 @@ public class JWTUtil {
     private String secretKey = "zerock12345678";
 
     //1month
-    private long expire = 60 * 24* 30;
+    private long expire = 60*24*7;
 
     public String generateToken(String content) throws Exception{
 
@@ -32,32 +31,36 @@ public class JWTUtil {
                 .compact();
     }
 
-    public String validateAndExtract(String tokenStr)throws Exception {
+    public String validateAndExtract(String tokenStr)throws ExpiredJwtException, UnsupportedJwtException, MalformedJwtException, SignatureException, IllegalArgumentException {
 
         String contentValue = null;
 
+        DefaultJws defaultJws = null;
         try {
-            DefaultJws defaultJws = (DefaultJws) Jwts.parser()
+            defaultJws = (DefaultJws) Jwts.parser()
                     .setSigningKey(secretKey.getBytes("UTF-8")).parseClaimsJws(tokenStr);
-
-            log.info(defaultJws);
-
-            log.info(defaultJws.getBody().getClass());
-
-            DefaultClaims claims = (DefaultClaims) defaultJws.getBody();
-
-            log.info("------------------------");
-
-            contentValue = claims.getSubject();
-
-
-
-        }catch(Exception e){
+        } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
-            log.error(e.getMessage());
-            contentValue = null;
-            throw e;
         }
+
+        log.info(defaultJws);
+
+        DefaultClaims defaultClaims = (DefaultClaims) defaultJws.getBody();
+
+        log.info(defaultJws.getBody().getClass());
+        log.info("------------exp------------------------");
+
+        long expTime = Long.parseLong(defaultClaims.get("exp").toString());
+
+
+
+        DefaultClaims claims = (DefaultClaims) defaultJws.getBody();
+
+        log.info("------------------------");
+
+        contentValue = claims.getSubject();
+
+
         return contentValue;
     }
 

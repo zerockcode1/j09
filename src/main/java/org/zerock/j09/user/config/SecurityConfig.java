@@ -16,6 +16,7 @@ import org.zerock.j09.user.security.CustomAccessDeniedHandler;
 import org.zerock.j09.user.security.CustomHttp403ForbiddenEntryPoint;
 import org.zerock.j09.user.security.filter.ApiCheckFilter;
 import org.zerock.j09.user.security.filter.ApiLoginFilter;
+import org.zerock.j09.user.security.filter.ApiRefreshFilter;
 import org.zerock.j09.user.security.handler.LoginFailHandler;
 
 @Configuration
@@ -37,10 +38,16 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         log.info("configure.......................");
 
-        http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+        //http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
         http.csrf().disable();
+        http.addFilterBefore(apiRefreshFilter(), UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(apiCheckFilter(), UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(apiLoginFilter(),UsernamePasswordAuthenticationFilter.class);
+    }
+
+    @Bean
+    public ApiRefreshFilter apiRefreshFilter() {
+        return new ApiRefreshFilter("/refresh");
     }
 
     @Bean
